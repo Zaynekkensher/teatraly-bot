@@ -97,5 +97,5 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex("^🔄 Перенести$"), handle_reschedule))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex("^🗑 Удалить мероприятие$"), handle_delete))
 
-    print("Бот запущен...")
+    print("Бот запущен..")
     app.run_polling()
