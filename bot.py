@@ -22,7 +22,7 @@ def save_events(events):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [KeyboardButton(text="➕ Добавить мероприятие", web_app=WebAppInfo(url="https://zaynekkensher.github.io/-teatraly-webapp/"))],
+        [KeyboardButton(text="➕ Добавить мероприятие", web_app=WebAppInfo(url="https://zaynekkensher.github.io/-teatraly-webapp/?v=2"))],
         [KeyboardButton(text="📋 Список мероприятий")],
         [KeyboardButton(text="✏️ Редактировать"), KeyboardButton(text="🔄 Перенести")],
         [KeyboardButton(text="🗑 Удалить мероприятие")]
