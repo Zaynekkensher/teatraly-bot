@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from telegram import Update, ReplyKeyboardMarkup, WebAppInfo
+from telegram import Update, ReplyKeyboardMarkup, WebAppInfo, KeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 
 logging.basicConfig(level=logging.INFO)
@@ -22,10 +22,10 @@ def save_events(events):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[
-        {
-            "text": "Добавить мероприятие",
-            "web_app": WebAppInfo(url="https://zaynekkensher.github.io/-teatraly-webapp/")
-        }
+        KeyboardButton(
+            text="Добавить мероприятие",
+            web_app=WebAppInfo(url="https://zaynekkensher.github.io/-teatraly-webapp/")
+        )
     ]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text("Добро пожаловать в 'Театралы' 🎭!", reply_markup=reply_markup)
@@ -63,7 +63,7 @@ async def next_event(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(msg)
 
 if __name__ == '__main__':
-    app = ApplicationBuilder().token("8054569637:AAERIvbdTeyicVAibj79w7A4yDmd5JKxfeA").build()
+    app = ApplicationBuilder().token("8054569637:AAFivRSd9IXr7sMT7mQcCS18TzELEbK1uUU").build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("list", list_events))
     app.add_handler(CommandHandler("next", next_event))
