@@ -97,5 +97,3 @@ if __name__ == '__main__':
         url_path=TOKEN,
         webhook_url=f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{TOKEN}"
     )
-
-    app.run(host='0.0.0.0', port=port)
