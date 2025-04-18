@@ -88,18 +88,9 @@ def webhook_handler():
     return "ok", 200
 
 if __name__ == '__main__':
-    # Removed duplicate creation of application
-
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("list", list_events))
     application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^📋 Список мероприятий$"), list_events))
 
-    # webhook-режим, порт для Render
-    port = int(os.environ.get("PORT", 5000))
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=port,
-        url_path=TOKEN,
-        webhook_url=f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{TOKEN}"
-    )
+    application.run_polling()
