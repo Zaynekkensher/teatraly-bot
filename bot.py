@@ -12,7 +12,9 @@ logger = logging.getLogger(__name__)
 TOKEN = os.getenv('TOKEN')  # теперь лучше хранить в переменных окружения
 EVENTS_FILE = 'events.json'
 
+application = ApplicationBuilder().token(TOKEN).build()
 app = Flask(__name__)
+app.bot = application.bot
 
 # загрузка данных событий
 def load_events():
@@ -77,14 +79,12 @@ async def list_events(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # веб-хук для Telegram
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook_handler():
-    update = Update.de_json(request.get_json(force=True), application.bot)
+    update = Update.de_json(request.get_json(force=True), app.bot)
     application.update_queue.put_nowait(update)
     return "ok", 200
 
 if __name__ == '__main__':
     # Removed duplicate creation of application
-
-    application = ApplicationBuilder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("list", list_events))
