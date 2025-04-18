@@ -1,28 +1,35 @@
 import json
 import logging
+import os
 from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup, WebAppInfo, KeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+from flask import Flask, request
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+TOKEN = os.getenv('TOKEN')  # теперь лучше хранить в переменных окружения
 EVENTS_FILE = 'events.json'
 
+app = Flask(__name__)
+
+# загрузка данных событий
 def load_events():
     try:
         with open(EVENTS_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        return []
+        return {}
 
+# сохранение данных событий
 def save_events(events):
     with open(EVENTS_FILE, 'w', encoding='utf-8') as f:
         json.dump(events, f, indent=2, ensure_ascii=False)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [KeyboardButton(text="➕ Добавить мероприятие", web_app=WebAppInfo(url="https://zaynekkensher.github.io/-teatraly-webapp/?v=2"))],
+        [KeyboardButton(text="➕ Добавить мероприятие", web_app=WebAppInfo(url="https://zaynekkensher.github.io/-teatraly-webapp/"))],
         [KeyboardButton(text="📋 Список мероприятий")],
         [KeyboardButton(text="✏️ Редактировать"), KeyboardButton(text="🔄 Перенести")],
         [KeyboardButton(text="🗑 Удалить мероприятие")]
@@ -31,71 +38,64 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Добро пожаловать в 'Театралы' 🎭!", reply_markup=reply_markup)
 
 async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = str(update.message.chat_id)
+    data = json.loads(update.message.web_app_data.data)
+
     try:
-        data = json.loads(update.message.web_app_data.data)
+        datetime.strptime(data["date"], "%d.%m.%Y")
+        datetime.strptime(data["time"], "%H:%M")
+    except ValueError:
+        await update.message.reply_text("⚠️ Неверный формат даты или времени. Используйте календарь и часы.")
+        return
 
-        # ✅ Валидация даты и времени
-        try:
-            datetime.strptime(data["date"], "%d.%m.%Y")
-            datetime.strptime(data["time"], "%H:%M")
-        except ValueError:
-            await update.message.reply_text("⚠️ Неверный формат даты или времени. Используйте календарь и часы.")
-            return
+    events = load_events()
+    if chat_id not in events:
+        events[chat_id] = []
+    events[chat_id].append(data)
+    save_events(events)
 
-        events = load_events()
-        events.append(data)
-        save_events(events)
-        await update.message.reply_text("✅ Мероприятие добавлено!")
-    except Exception as e:
-        logger.error(f"Ошибка при обработке данных из формы: {e}")
-        await update.message.reply_text("⚠️ Ошибка при добавлении мероприятия")
+    await update.message.reply_text("✅ Мероприятие добавлено!")
 
 async def list_events(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    events = load_events()
+    chat_id = str(update.message.chat_id)
+    events = load_events().get(chat_id, [])
     if not events:
         await update.message.reply_text("Список мероприятий пуст 🗓️")
         return
+    events.sort(key=lambda e: datetime.strptime(e['date'] + ' ' + e['time'], '%d.%m.%Y %H:%M'))
     msg = "📅 Все мероприятия:\n\n"
     for e in events:
-        msg += f"{e['date']} {e['time']} — {e['title']}\n📍 {e['place']}\n📝 {e['comment']}\n\n"
+        event_date = datetime.strptime(e['date'] + ' ' + e['time'], '%d.%m.%Y %H:%M')
+        now = datetime.now()
+        if event_date < now:
+            msg += f"🔘 {e['date']} {e['time']} (прошло)\n"
+        else:
+            msg += f"🟢 {e['date']} {e['time']}\n"
+        msg += f"🏷 {e['title']} | {e['place']}\n📍 {e['city']}\n📝 {e['comment']}\n\n"
     await update.message.reply_text(msg)
 
-async def next_event(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    events = load_events()
-    if not events:
-        await update.message.reply_text("Нет запланированных мероприятий")
-        return
-    events.sort(key=lambda e: datetime.strptime(e['date'] + ' ' + e['time'], '%d.%m.%Y %H:%M'))
-    next_e = events[0]
-    msg = (f"🎯 Ближайшее мероприятие:\n\n{next_e['date']} {next_e['time']} — {next_e['title']}\n"
-           f"📍 {next_e['place']}\n📝 {next_e['comment']}")
-    await update.message.reply_text(msg)
-
-# 🔧 Заглушки для будущих функций
-async def handle_show_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await list_events(update, context)
-
-async def handle_edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✏️ Функция редактирования скоро появится!")
-
-async def handle_reschedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🔄 Функция переноса скоро появится!")
-
-async def handle_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🗑 Функция удаления скоро появится!")
+# веб-хук для Telegram
+@app.route(f"/{TOKEN}", methods=["POST"])
+def webhook_handler():
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    application.update_queue.put_nowait(update)
+    return "ok", 200
 
 if __name__ == '__main__':
-    app = ApplicationBuilder().token("8054569637:AAFivRSd9IXr7sMT7mQcCS18TzELEbK1uUU").build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("list", list_events))
-    app.add_handler(CommandHandler("next", next_event))
-    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data))
+    application = ApplicationBuilder().token(TOKEN).build()
 
-    # 📋 Кнопки управления
-    app.add_handler(MessageHandler(filters.TEXT & filters.Regex("^📋 Список мероприятий$"), handle_show_list))
-    app.add_handler(MessageHandler(filters.TEXT & filters.Regex("^✏️ Редактировать$"), handle_edit))
-    app.add_handler(MessageHandler(filters.TEXT & filters.Regex("^🔄 Перенести$"), handle_reschedule))
-    app.add_handler(MessageHandler(filters.TEXT & filters.Regex("^🗑 Удалить мероприятие$"), handle_delete))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("list", list_events))
+    application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^📋 Список мероприятий$"), list_events))
 
-    print("Бот запущен..")
-    app.run_polling()
+    # webhook-режим, порт для Render
+    port = int(os.environ.get("PORT", 5000))
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=port,
+        url_path=TOKEN,
+        webhook_url=f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{TOKEN}"
+    )
+
+    app.run(host='0.0.0.0', port=port)
