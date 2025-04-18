@@ -77,7 +77,7 @@ async def list_events(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # веб-хук для Telegram
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook_handler():
-    update = Update.de_json(request.get_json(force=True), app.bot)
+    update = Update.de_json(request.get_json(force=True), application.bot)
     application.update_queue.put_nowait(update)
     return "ok", 200
 
