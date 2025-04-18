@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 TOKEN = os.getenv('TOKEN')  # теперь лучше хранить в переменных окружения
 EVENTS_FILE = 'events.json'
 
+application = ApplicationBuilder().token(TOKEN).build()
+
 app = Flask(__name__)
 
 # загрузка данных событий
@@ -82,7 +84,7 @@ def webhook_handler():
     return "ok", 200
 
 if __name__ == '__main__':
-    application = ApplicationBuilder().token(TOKEN).build()
+    # Removed duplicate creation of application
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("list", list_events))
