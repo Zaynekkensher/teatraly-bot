@@ -79,8 +79,12 @@ async def list_events(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # веб-хук для Telegram
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook_handler():
-    update = Update.de_json(request.get_json(force=True), app.bot)
-    application.update_queue.put_nowait(update)
+    try:
+        update = Update.de_json(request.get_json(force=True), app.bot)
+        application.update_queue.put_nowait(update)
+    except Exception as e:
+        logger.error(f"Ошибка обработки запроса из Telegram: {e}", exc_info=True)
+        return "error", 500
     return "ok", 200
 
 if __name__ == '__main__':
